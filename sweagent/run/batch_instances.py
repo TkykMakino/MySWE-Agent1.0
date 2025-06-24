@@ -198,7 +198,54 @@ class InstancesFromFile(BaseModel, AbstractInstanceSource):
 
     def get_instance_configs(self) -> list[BatchInstance]:
         instance_dicts = load_file(self.path)
-        simple_instances = [SimpleBatchInstance.model_validate(instance_dict) for instance_dict in instance_dicts]
+
+        # ★★★ここからがFEA-Bench専用の改造部分★★★
+        is_fea_bench = False
+        if instance_dicts and "problem_info" in instance_dicts[0] and "pull_number" in instance_dicts[0]:
+            logger.info("FEA-Bench data format detected. Applying conversion.")
+            is_fea_bench = True
+
+        simple_instances = []
+        for data in instance_dicts:
+            if is_fea_bench:
+                try:
+                    problem_info = data.get("problem_info", {})
+                    problem_statement_text = (
+                        f"Title: {problem_info.get('pr_title', '')}\n\n"
+                        f"Body:\n{problem_info.get('pr_body', '')}"
+                    )
+                    
+                    # Assume `testbed` directory is in the same parent directory as the data file
+                    testbed_path = self.path.parent / "testbed"
+                    repo_folder_name = data['repo'].replace('/', '__')
+                    repo_local_path = testbed_path / repo_folder_name
+
+                    logger.info(
+                        f"Converting instance '{data.get('instance_id')}': "
+                        f"repo '{data['repo']}' -> path '{repo_local_path.resolve()}'"
+                    )
+
+                    simple_dict = {
+                        "instance_id": data["instance_id"],
+                        "repo_name": str(repo_local_path.resolve()), # Pass the absolute local path
+                        "base_commit": data["base_commit"],
+                        "problem_statement": problem_statement_text,
+                        "image_name": "sweagent/swe-agent:latest",
+                        "extra_fields": {
+                            "patch": data.get("patch"),
+                            "test_patch": data.get("test_patch"),
+                            "pull_number": data.get("pull_number"),
+                        }
+                    }
+                    simple_instances.append(SimpleBatchInstance.model_validate(simple_dict))
+                except KeyError as e:
+                    logger.error(f"Missing key {e} in FEA-Bench data. Skipping instance: {data.get('instance_id')}")
+                    continue
+            else:
+                simple_instances.append(SimpleBatchInstance.model_validate(data))
+        # ★★★ここまでがFEA-Bench専用の改造部分★★★
+
+#        simple_instances = [SimpleBatchInstance.model_validate(instance_dict) for instance_dict in instance_dicts]
         instances = [instance.to_full_batch_instance(self.deployment) for instance in simple_instances]
         return _filter_batch_items(instances, filter_=self.filter, slice_=self.slice, shuffle=self.shuffle)
 
