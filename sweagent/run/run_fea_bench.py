@@ -91,27 +91,54 @@ class FEABenchInstances(BatchInstances):
             try:
                 problem_info = data.get("problem_info", {})
                 problem_statement_text = (
-                    f"{problem_info.get('pr_title', '')}\n\n{problem_info.get('pr_body', '')}"
+                    f"Title: {problem_info.get('pr_title', '')}\n\n"
+                    f"Body:\n{problem_info.get('pr_body', '')}"
                 )
 
-                # SWE-Agentが期待するProblemStatementオブジェクトを作成
-                ps = ProblemStatement(
-                    id=data["instance_id"],
-                    repo=data["repo"],
-                    base_commit=data["base_commit"],
-                    problem_statement=problem_statement_text,
-                    patch=data.get("patch"),
-                    test_patch=data.get("test_patch"),
+                # 全ての追加フィールドをextra_fieldsに格納
+                extra_fields = {
+                    "patch": data.get("patch"),
+                    "test_patch": data.get("test_patch"),
+                    "pull_number": data.get("pull_number"),
+                    "url": data.get("url"),
+                    "issue_numbers": data.get("issue_numbers", []),
+                    "first_commit_time": data.get("first_commit_time"),
+                    "created_at": data.get("created_at"),
+                    "readmes": data.get("readmes"),
+                    "files": data.get("files"),
+                    "non_py_patch": data.get("non_py_patch"),
+                    "new_components": data.get("new_components"),
+                    "FAIL_TO_PASS": data.get("FAIL_TO_PASS", []),
+                    "PASS_TO_PASS": data.get("PASS_TO_PASS", []),
+                    "environment_setup_commit": data.get("environment_setup_commit"),
+                }
+
+                # Assume `testbed` directory is in the same parent directory as the data file
+                testbed_path = self.path.parent / "testbed"
+                repo_folder_name = data['repo'].replace('/', '__')
+                repo_local_path = testbed_path / repo_folder_name
+
+                logger.info(
+                    f"Converting instance '{data.get('instance_id')}': "
+                    f"repo '{data['repo']}' -> path '{repo_local_path.resolve()}'"
                 )
 
-                # SWE-Agentが期待するSWEEnvConfigオブジェクトを作成
-                # image_nameは固定で設定する
-                env_config = SWEEnvConfig(
-                    image_name="sweagent/swe-agent:latest",
-                    repo_path=data["repo"],
-                )
+                from sweagent.run.batch_instances import SimpleBatchInstance
+                from swerex.deployment.config import DockerDeploymentConfig
 
-                converted_instances.append(BatchInstance(problem_statement=ps, env=env_config))
+                simple_dict = {
+                    "instance_id": data["instance_id"],
+                    "repo_name": str(repo_local_path.resolve()),
+                    "base_commit": data["base_commit"],
+                    "problem_statement": problem_statement_text,
+                    "image_name": "sweagent/swe-agent:latest",
+                    "extra_fields": extra_fields
+                }
+
+                simple_instance = SimpleBatchInstance.model_validate(simple_dict)
+                deployment = DockerDeploymentConfig(image="sweagent/swe-agent:latest")
+                converted_instances.append(simple_instance.to_full_batch_instance(deployment))
+
             except KeyError as e:
                 logger.error(f"Missing key {e} in FEA-Bench data at line {i+1}. Skipping instance.")
                 continue
