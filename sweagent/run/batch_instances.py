@@ -220,10 +220,10 @@ class InstancesFromFile(BaseModel, AbstractInstanceSource):
                     repo_folder_name = data['repo'].replace('/', '__')
                     repo_local_path = testbed_path / repo_folder_name
 
-                    logger.info(
-                        f"Converting instance '{data.get('instance_id')}': "
-                        f"repo '{data['repo']}' -> path '{repo_local_path.resolve()}'"
-                    )
+                    # logger.info(
+                    #     f"Converting instance '{data.get('instance_id')}': "
+                    #     f"repo '{data['repo']}' -> path '{repo_local_path.resolve()}'"
+                    # )
 
                     simple_dict = {
                         "instance_id": data["instance_id"],
@@ -235,6 +235,7 @@ class InstancesFromFile(BaseModel, AbstractInstanceSource):
                             "patch": data.get("patch"),
                             "test_patch": data.get("test_patch"),
                             "pull_number": data.get("pull_number"),
+                            "new_components": data.get("new_components"),
                         }
                     }
                     simple_instances.append(SimpleBatchInstance.model_validate(simple_dict))

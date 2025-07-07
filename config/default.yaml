@@ -19,9 +19,14 @@ agent:
 
       {% if new_components %}
       This PR introduces the following new components:
-      {% for component in new_components %}
+      <new_components>
+      {% for file_path, components in new_components.items() %}
+      In file {{file_path}}:
+      {% for component in components %}
         - {{component.name}} (type: {{component.type}})
       {% endfor %}
+      {% endfor %}
+      </new_components>
       Please implement these new components without over- or under-representation and without changing their names.
       {% endif %}
 
