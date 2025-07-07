@@ -2551,9 +2551,14 @@ To learn about the agent class itself, see the <a href="../agent/">agent class r
 
 <span class="w">      </span><span class="no">{% if new_components %}</span>
 <span class="w">      </span><span class="no">This PR introduces the following new components:</span>
-<span class="w">      </span><span class="no">{% for component in new_components %}</span>
+<span class="w">      </span><span class="no">&lt;new_components&gt;</span>
+<span class="w">      </span><span class="no">{% for file_path, components in new_components.items() %}</span>
+<span class="w">      </span><span class="no">In file {{file_path}}:</span>
+<span class="w">      </span><span class="no">{% for component in components %}</span>
 <span class="w">        </span><span class="no">- {{component.name}} (type: {{component.type}})</span>
 <span class="w">      </span><span class="no">{% endfor %}</span>
+<span class="w">      </span><span class="no">{% endfor %}</span>
+<span class="w">      </span><span class="no">&lt;/new_components&gt;</span>
 <span class="w">      </span><span class="no">Please implement these new components without over- or under-representation and without changing their names.</span>
 <span class="w">      </span><span class="no">{% endif %}</span>
 
